@@ -1,4 +1,4 @@
-name: Flask CI
+name: Flask CI with Docker
 
 on:
   push:
@@ -25,3 +25,14 @@ jobs:
 
       - name: Run tests
         run: python -m pytest
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t flask-cicd-demo:latest .
