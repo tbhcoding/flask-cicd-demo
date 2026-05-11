@@ -1,4 +1,4 @@
-name: Flask CI with Docker
+name: Flask CI/CD with Docker and Azure Deploy
 
 on:
   push:
@@ -36,3 +36,27 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t flask-cicd-demo:latest .
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploy to Azure VM through SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ~/flask-cicd-demo
+            git pull origin main
+
+            docker stop flask-cicd-demo || true
+            docker rm flask-cicd-demo || true
+
+            docker build -t flask-cicd-demo .
+            docker run -d --name flask-cicd-demo -p 80:5000 flask-cicd-demo
+          EOF
